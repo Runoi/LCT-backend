@@ -1,0 +1,4153 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Moskollektor Backend",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/config": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Get Config",
+        "description": "Return the reference/config bundle the frontend must not hardcode.\n\nReturns:\n    The reference data (sensor types, states, risk levels/thresholds,\n    reject reasons, work types, work order statuses, SLA params,\n    freshness boundaries) wrapped in the standard response envelope.",
+        "operationId": "get_config_api_v1_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "description": "Authenticate a demo user and issue a server-side session token.\n\nArgs:\n    body: The submitted username/password.\n\nReturns:\n    A LoginResponse carrying the new bearer token.\n\nRaises:\n    HTTPException: 401 if the credentials are invalid.",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Get Me",
+        "description": "Return the authenticated user's role, permissions, scope, and locale.\n\nArgs:\n    user: The authenticated user, injected by get_current_user.\n\nReturns:\n    A MeOut with the resolved scope (facility_ids omitted for\n    all_facilities scope) and the sorted permission list.",
+        "operationId": "get_me_api_v1_me_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/facilities": {
+      "get": {
+        "tags": [
+          "facilities"
+        ],
+        "summary": "Get Facilities",
+        "description": "List facilities within the caller's scope.\n\nArgs:\n    query: Optional case-insensitive substring match on display_name.\n    current_state: Accepted for contract completeness (see facility_query).\n    risk_level: Accepted for contract completeness (see facility_query).\n    district: Optional district_id filter.\n    bbox: Optional \"min_lon,min_lat,max_lon,max_lat\" filter.\n    cursor: Opaque pagination cursor.\n    limit: Page size, 1-200.\n    user: The authenticated caller, injected by get_current_user.\n\nReturns:\n    A FacilityListEnvelope containing only facilities the caller may see.",
+        "operationId": "get_facilities_api_v1_facilities_get",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Query"
+            }
+          },
+          {
+            "name": "current_state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Current State"
+            }
+          },
+          {
+            "name": "risk_level",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Risk Level"
+            }
+          },
+          {
+            "name": "district",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "District"
+            }
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bbox"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacilityListEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/facilities/{facility_id}": {
+      "get": {
+        "tags": [
+          "facilities"
+        ],
+        "summary": "Get Facility",
+        "description": "Fetch one facility's detail, enforcing the caller's scope.\n\nArgs:\n    facility_id: The requested facility id.\n    user: The authenticated caller, injected by get_current_user.\n\nReturns:\n    The facility's full detail (same shape as a list item).\n\nRaises:\n    ApiError: 403 if the facility exists but is out of scope; 404 if\n        it does not exist.",
+        "operationId": "get_facility_api_v1_facilities__facility_id__get",
+        "parameters": [
+          {
+            "name": "facility_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Facility Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacilityOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/facilities/{facility_id}/hierarchy": {
+      "get": {
+        "tags": [
+          "hierarchy"
+        ],
+        "summary": "Get Hierarchy",
+        "description": "Return every node in a facility's tree, enforcing the caller's scope.\n\nArgs:\n    facility_id: The facility whose tree to fetch.\n    user: The authenticated caller, injected by get_current_user.\n\nReturns:\n    The full node list (empty if the facility has no nodes yet).\n\nRaises:\n    ApiError: 404 if the facility does not exist; 403 if it exists but\n        is outside the caller's scope.",
+        "operationId": "get_hierarchy_api_v1_facilities__facility_id__hierarchy_get",
+        "parameters": [
+          {
+            "name": "facility_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Facility Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HierarchyNodeOut"
+                  },
+                  "title": "Response Get Hierarchy Api V1 Facilities  Facility Id  Hierarchy Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/facilities/{facility_id}/layout": {
+      "get": {
+        "tags": [
+          "layout"
+        ],
+        "summary": "Get Layout",
+        "description": "Return the facility's schematic GeoJSON layout, enforcing scope.\n\nArgs:\n    facility_id: The facility whose layout to fetch.\n    user: The authenticated caller, injected by get_current_user.\n\nReturns:\n    A GeoJSON FeatureCollection.\n\nRaises:\n    ApiError: 404 if the facility does not exist; 403 if it exists but\n        is outside the caller's scope.",
+        "operationId": "get_layout_api_v1_facilities__facility_id__layout_get",
+        "parameters": [
+          {
+            "name": "facility_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Facility Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Layout Api V1 Facilities  Facility Id  Layout Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sensors": {
+      "get": {
+        "tags": [
+          "sensors"
+        ],
+        "summary": "Get Sensors",
+        "description": "List sensors within the caller's scope.\n\nArgs:\n    facility_id: Optional exact facility filter.\n    hierarchy_node_id: Optional exact hierarchy node filter.\n    type: Optional exact sensor_type_id filter.\n    current_state: Accepted for contract completeness; no real\n        current_state data yet (see src/schemas/sensor.py).\n    risk_level: Accepted for contract completeness; same caveat.\n    query: Optional case-insensitive substring match.\n    cursor: Opaque pagination cursor.\n    limit: Page size, 1-200.\n    user: The authenticated caller, injected by get_current_user.\n\nReturns:\n    A SensorListEnvelope containing only sensors the caller may see.",
+        "operationId": "get_sensors_api_v1_sensors_get",
+        "parameters": [
+          {
+            "name": "facility_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Facility Id"
+            }
+          },
+          {
+            "name": "hierarchy_node_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hierarchy Node Id"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "current_state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Current State"
+            }
+          },
+          {
+            "name": "risk_level",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Risk Level"
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Query"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SensorListEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sensors/{sensor_id}": {
+      "get": {
+        "tags": [
+          "sensors"
+        ],
+        "summary": "Get Sensor",
+        "description": "Fetch one sensor's detail card, enforcing the caller's scope.\n\nArgs:\n    sensor_id: The requested sensor id.\n    user: The authenticated caller, injected by get_current_user.\n\nReturns:\n    The sensor's full detail card.\n\nRaises:\n    ApiError: 404 if the sensor does not exist; 403 if it exists but is\n        outside scope (orphans are out of scope for anyone restricted).",
+        "operationId": "get_sensor_api_v1_sensors__sensor_id__get",
+        "parameters": [
+          {
+            "name": "sensor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sensor Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SensorDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sensors/{sensor_id}/series": {
+      "get": {
+        "tags": [
+          "sensor-series"
+        ],
+        "summary": "Get Series",
+        "description": "Return a sensor's time series, in the format matching its value_type.\n\nArgs:\n    sensor_id: The requested sensor id.\n    from_: Optional inclusive start of the time range.\n    to: Optional inclusive end of the time range.\n    granularity: Optional bucket size for numeric downsampling\n        (e.g. \"5m\", \"1h\", \"1d\"); ignored for categorical sensors.\n    user: The authenticated caller, injected by get_current_user.\n\nReturns:\n    A NumericSeriesOut (points/thresholds/missing_intervals) or a\n    CategoricalSeriesOut (intervals), matching the sensor's value_type.\n\nRaises:\n    ApiError: 404 if the sensor does not exist; 403 if out of scope.",
+        "operationId": "get_series_api_v1_sensors__sensor_id__series_get",
+        "parameters": [
+          {
+            "name": "sensor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sensor Id"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "granularity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Granularity"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/NumericSeriesOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CategoricalSeriesOut"
+                    }
+                  ],
+                  "title": "Response Get Series Api V1 Sensors  Sensor Id  Series Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/source-health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Get Source Health Endpoint",
+        "description": "Return the current health of every emulated external source.",
+        "operationId": "get_source_health_endpoint_api_v1_system_source_health_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceHealthEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/source-health/{source}/degrade": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Degrade Source",
+        "description": "Force a source's reported status for a bounded duration (demo/test control).",
+        "operationId": "degrade_source_api_v1_system_source_health__source__degrade_post",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Source"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DegradeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Clear Source Degradation",
+        "description": "Clear an active override, reverting to the computed status.",
+        "operationId": "clear_source_degradation_api_v1_system_source_health__source__degrade_delete",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Source"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/scenarios": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "List Scenarios",
+        "description": "List the fixture-scenario library available for controlled demonstration.",
+        "operationId": "list_scenarios_api_v1_system_scenarios_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioListEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/scenarios/{scenario_id}/activate": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Activate Scenario Endpoint",
+        "description": "Activate a fixture scenario against a real facility.",
+        "operationId": "activate_scenario_endpoint_api_v1_system_scenarios__scenario_id__activate_post",
+        "parameters": [
+          {
+            "name": "scenario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scenario Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateScenarioRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivateScenarioResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Get Events",
+        "description": "List events/incidents within the caller's scope.\n\nArgs:\n    facility_id: Optional exact facility filter.\n    sensor_id: Optional exact sensor filter.\n    event_type: Optional exact event_type (sensor_type_id) filter.\n    from_: Optional ISO 8601 inclusive lower bound on occurred_at.\n    to: Optional ISO 8601 inclusive upper bound on occurred_at.\n    cursor: Opaque pagination cursor.\n    limit: Page size, 1-200.\n    user: The authenticated caller, injected by get_current_user.\n\nReturns:\n    An EventListEnvelope containing only events the caller may see.",
+        "operationId": "get_events_api_v1_events_get",
+        "parameters": [
+          {
+            "name": "facility_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Facility Id"
+            }
+          },
+          {
+            "name": "sensor_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sensor Id"
+            }
+          },
+          {
+            "name": "event_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Type"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventListEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/risks": {
+      "get": {
+        "tags": [
+          "risks"
+        ],
+        "summary": "Get Risks",
+        "description": "List the risk forecast queue within the caller's scope.\n\nArgs:\n    facility_id: Optional exact facility filter.\n    risk_type: Optional exact RISK_TYPES filter.\n    risk_level: Optional exact RISK_LEVELS filter.\n    decision_status: Optional exact decision_status filter.\n    from_: Optional ISO 8601 inclusive lower bound on as_of.\n    to: Optional ISO 8601 inclusive upper bound on as_of.\n    cursor: Opaque pagination cursor.\n    limit: Page size, 1-200.\n    user: The authenticated caller, injected by require_permission.\n\nReturns:\n    A RiskListEnvelope sorted priority_score desc, prediction_window_start asc.",
+        "operationId": "get_risks_api_v1_risks_get",
+        "parameters": [
+          {
+            "name": "facility_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Facility Id"
+            }
+          },
+          {
+            "name": "risk_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Risk Type"
+            }
+          },
+          {
+            "name": "risk_level",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Risk Level"
+            }
+          },
+          {
+            "name": "decision_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Decision Status"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskListEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/risks/{risk_id}": {
+      "get": {
+        "tags": [
+          "risks"
+        ],
+        "summary": "Get Risk",
+        "description": "Fetch one risk's full forecast card, enforcing the caller's scope.\n\nArgs:\n    risk_id: The requested risk id.\n    user: The authenticated caller, injected by require_permission.\n\nReturns:\n    The risk's full detail card.\n\nRaises:\n    ApiError: 404 if the risk does not exist; 403 if it exists but is\n        outside scope.",
+        "operationId": "get_risk_api_v1_risks__risk_id__get",
+        "parameters": [
+          {
+            "name": "risk_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Risk Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/risks/{risk_id}/acknowledge": {
+      "post": {
+        "tags": [
+          "risks"
+        ],
+        "summary": "Acknowledge Risk",
+        "description": "Acknowledge a risk forecast, with optimistic concurrency.\n\nArgs:\n    risk_id: The risk to acknowledge.\n    body: The expected_version the caller last saw.\n    user: The authenticated caller, injected by require_permission.\n\nReturns:\n    The updated risk card.\n\nRaises:\n    ApiError: 404/403 per scope (see get_risk_detail); 409 if\n        expected_version is stale.",
+        "operationId": "acknowledge_risk_api_v1_risks__risk_id__acknowledge_post",
+        "parameters": [
+          {
+            "name": "risk_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Risk Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcknowledgeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/risks/{risk_id}/reject": {
+      "post": {
+        "tags": [
+          "risks"
+        ],
+        "summary": "Reject Risk",
+        "description": "Reject a risk forecast; requires a reason_code, and a comment for \"other\".\n\nArgs:\n    risk_id: The risk to reject.\n    body: expected_version, reason_code (from REJECT_REASONS), and an\n        optional comment (required when reason_code=\"other\").\n    user: The authenticated caller, injected by require_permission.\n\nReturns:\n    The updated risk card.\n\nRaises:\n    ApiError: 422 for a missing/unknown reason_code, or a missing\n        comment when the reason requires one; 404/403 per scope; 409\n        if expected_version is stale.",
+        "operationId": "reject_risk_api_v1_risks__risk_id__reject_post",
+        "parameters": [
+          {
+            "name": "risk_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Risk Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/risks/{risk_id}/defer": {
+      "post": {
+        "tags": [
+          "risks"
+        ],
+        "summary": "Defer Risk",
+        "description": "Defer a risk forecast, with optimistic concurrency.\n\nArgs:\n    risk_id: The risk to defer.\n    body: The expected_version the caller last saw.\n    user: The authenticated caller, injected by require_permission.\n\nReturns:\n    The updated risk card.\n\nRaises:\n    ApiError: 404/403 per scope; 409 if expected_version is stale.",
+        "operationId": "defer_risk_api_v1_risks__risk_id__defer_post",
+        "parameters": [
+          {
+            "name": "risk_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Risk Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeferRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/work-orders": {
+      "post": {
+        "tags": [
+          "work-orders"
+        ],
+        "summary": "Post Work Order",
+        "description": "Create a draft work order.\n\nArgs:\n    body: The creation request; mode must be \"draft\".\n    user: The authenticated caller, injected by require_any_permission.\n\nReturns:\n    The created work order.\n\nRaises:\n    ApiError: 422 for mode != \"draft\" or an unknown work_type/priority/\n        target_entity_type; 403 if facility_id is outside the caller's scope.",
+        "operationId": "post_work_order_api_v1_work_orders_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "work-orders"
+        ],
+        "summary": "Get Work Orders",
+        "description": "List work orders within the caller's scope, newest first.\n\nArgs:\n    facility_id: Optional exact facility filter.\n    status: Optional exact status filter.\n    work_type: Optional exact WORK_TYPES filter.\n    cursor: Opaque pagination cursor.\n    limit: Page size, 1-200.\n    user: The authenticated caller, injected by require_permission.\n\nReturns:\n    A WorkOrderListEnvelope containing only work orders the caller may see.",
+        "operationId": "get_work_orders_api_v1_work_orders_get",
+        "parameters": [
+          {
+            "name": "facility_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Facility Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "work_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Work Type"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderListEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "description": "Report service liveness including database connectivity.\n\nArgs:\n    response: Injected FastAPI response, used to set the status code on failure.\n    session: Injected database session (overridable in tests).\n\nReturns:\n    A status payload: {\"status\": \"ok\"} when the database is reachable,\n    {\"status\": \"unavailable\"} with a 503 status otherwise.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AcknowledgeRequest": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "title": "Expected Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expected_version"
+        ],
+        "title": "AcknowledgeRequest",
+        "description": "Body for POST /api/v1/risks/{risk_id}/acknowledge."
+      },
+      "ActivateScenarioRequest": {
+        "properties": {
+          "facility_id": {
+            "type": "string",
+            "title": "Facility Id"
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed",
+            "default": 42
+          }
+        },
+        "type": "object",
+        "required": [
+          "facility_id"
+        ],
+        "title": "ActivateScenarioRequest",
+        "description": "Body for POST /api/v1/system/scenarios/{scenario_id}/activate."
+      },
+      "ActivateScenarioResult": {
+        "properties": {
+          "scenario_id": {
+            "type": "string",
+            "title": "Scenario Id"
+          },
+          "facility_id": {
+            "type": "string",
+            "title": "Facility Id"
+          },
+          "readings_inserted": {
+            "type": "integer",
+            "title": "Readings Inserted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scenario_id",
+          "facility_id",
+          "readings_inserted"
+        ],
+        "title": "ActivateScenarioResult",
+        "description": "Result of a scenario activation."
+      },
+      "Assets": {
+        "properties": {
+          "collector_count": {
+            "type": "integer",
+            "title": "Collector Count"
+          },
+          "sensor_count": {
+            "type": "integer",
+            "title": "Sensor Count"
+          },
+          "offline_sensor_count": {
+            "type": "integer",
+            "title": "Offline Sensor Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "collector_count",
+          "sensor_count",
+          "offline_sensor_count"
+        ],
+        "title": "Assets",
+        "description": "Counts of the facility's owned equipment/sensors."
+      },
+      "CategoricalInterval": {
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "From"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "To"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from",
+          "to",
+          "value",
+          "state"
+        ],
+        "title": "CategoricalInterval",
+        "description": "A time range during which the sensor held one categorical value."
+      },
+      "CategoricalSeriesOut": {
+        "properties": {
+          "value_type": {
+            "type": "string",
+            "const": "categorical",
+            "title": "Value Type",
+            "default": "categorical"
+          },
+          "intervals": {
+            "items": {
+              "$ref": "#/components/schemas/CategoricalInterval"
+            },
+            "type": "array",
+            "title": "Intervals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "intervals"
+        ],
+        "title": "CategoricalSeriesOut",
+        "description": "The categorical series response shape."
+      },
+      "ConfigEnvelope": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReferenceConfig"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ConfigMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ConfigEnvelope",
+        "description": "Standard {data, meta} envelope wrapping the reference config."
+      },
+      "ConfigMeta": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at"
+        ],
+        "title": "ConfigMeta",
+        "description": "Envelope metadata for the config bundle response."
+      },
+      "CreateWorkOrderRequest": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "source_risk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Risk Id"
+          },
+          "facility_id": {
+            "type": "string",
+            "title": "Facility Id"
+          },
+          "target_entity_type": {
+            "type": "string",
+            "title": "Target Entity Type"
+          },
+          "target_entity_id": {
+            "type": "string",
+            "title": "Target Entity Id"
+          },
+          "work_type": {
+            "type": "string",
+            "title": "Work Type"
+          },
+          "priority": {
+            "type": "string",
+            "title": "Priority"
+          },
+          "due_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Due At"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode",
+          "facility_id",
+          "target_entity_type",
+          "target_entity_id",
+          "work_type",
+          "priority",
+          "due_at",
+          "description"
+        ],
+        "title": "CreateWorkOrderRequest",
+        "description": "Body for POST /api/v1/work-orders.\n\nmode must be \"draft\" -- the only mode this backend ever supports, since\nno real external work-order system exists to submit to."
+      },
+      "CurrentReading": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "numeric_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numeric Value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "measured_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Measured At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "numeric_value",
+          "unit",
+          "measured_at"
+        ],
+        "title": "CurrentReading",
+        "description": "The most recent reading for a sensor, if any exist yet."
+      },
+      "DataHealth": {
+        "properties": {
+          "freshness": {
+            "type": "string",
+            "title": "Freshness"
+          },
+          "last_event_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Event At"
+          },
+          "coverage": {
+            "type": "number",
+            "title": "Coverage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "freshness",
+          "last_event_at",
+          "coverage"
+        ],
+        "title": "DataHealth",
+        "description": "Freshness/coverage of the data backing this facility's other fields."
+      },
+      "DecisionStatus": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "DecisionStatus",
+        "description": "A status in the risk-decision workflow (ticket 08)."
+      },
+      "DeferRequest": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "title": "Expected Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expected_version"
+        ],
+        "title": "DeferRequest",
+        "description": "Body for POST /api/v1/risks/{risk_id}/defer."
+      },
+      "DegradeRequest": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "duration_seconds": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "title": "Duration Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "duration_seconds"
+        ],
+        "title": "DegradeRequest",
+        "description": "Body for POST /api/v1/system/source-health/{source}/degrade."
+      },
+      "EventListEnvelope": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/EventOut"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/EventListMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "EventListEnvelope",
+        "description": "The standard {data, meta} envelope for GET /api/v1/events."
+      },
+      "EventListMeta": {
+        "properties": {
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "next_cursor",
+          "total",
+          "generated_at"
+        ],
+        "title": "EventListMeta",
+        "description": "Cursor-pagination metadata for the event list envelope."
+      },
+      "EventOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "facility_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Id"
+          },
+          "sensor_id": {
+            "type": "string",
+            "title": "Sensor Id"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          },
+          "ingested_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ingested At"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "is_confirmed_incident": {
+            "type": "boolean",
+            "title": "Is Confirmed Incident"
+          },
+          "verification_result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Result"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "related_risk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Risk Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_type",
+          "source",
+          "facility_id",
+          "sensor_id",
+          "occurred_at",
+          "ingested_at",
+          "state",
+          "value",
+          "is_confirmed_incident",
+          "verification_result",
+          "resolved_at",
+          "related_risk_id"
+        ],
+        "title": "EventOut",
+        "description": "One event/incident-journal entry.\n\nis_confirmed_incident/verification_result/resolved_at/related_risk_id\nare distinct fields from state (see src/models/event.py) -- an alarm\nevent and a confirmed incident are never collapsed into one status."
+      },
+      "FacilityListEnvelope": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/FacilityOut"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/FacilityListMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "FacilityListEnvelope",
+        "description": "The standard {data, meta} envelope for GET /api/v1/facilities."
+      },
+      "FacilityListMeta": {
+        "properties": {
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "next_cursor",
+          "total",
+          "generated_at"
+        ],
+        "title": "FacilityListMeta",
+        "description": "Cursor-pagination metadata for the facility list envelope."
+      },
+      "FacilityOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "facility_type": {
+            "type": "string",
+            "title": "Facility Type"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "current_state": {
+            "type": "string",
+            "title": "Current State"
+          },
+          "forecast": {
+            "$ref": "#/components/schemas/Forecast"
+          },
+          "incidents": {
+            "$ref": "#/components/schemas/Incidents"
+          },
+          "assets": {
+            "$ref": "#/components/schemas/Assets"
+          },
+          "data_health": {
+            "$ref": "#/components/schemas/DataHealth"
+          },
+          "priority_score": {
+            "type": "number",
+            "title": "Priority Score"
+          },
+          "source_health": {
+            "items": {
+              "$ref": "#/components/schemas/SourceHealthEntry"
+            },
+            "type": "array",
+            "title": "Source Health"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "facility_type",
+          "location",
+          "current_state",
+          "forecast",
+          "incidents",
+          "assets",
+          "data_health",
+          "priority_score",
+          "source_health",
+          "updated_at"
+        ],
+        "title": "FacilityOut",
+        "description": "The complete facility representation, shared by list and detail."
+      },
+      "Forecast": {
+        "properties": {
+          "risk_level": {
+            "type": "string",
+            "title": "Risk Level"
+          },
+          "max_probability": {
+            "type": "number",
+            "title": "Max Probability"
+          },
+          "active_count": {
+            "type": "integer",
+            "title": "Active Count"
+          },
+          "earliest_window_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earliest Window Start"
+          }
+        },
+        "type": "object",
+        "required": [
+          "risk_level",
+          "max_probability",
+          "active_count",
+          "earliest_window_start"
+        ],
+        "title": "Forecast",
+        "description": "Forecast summary — independent from current_state and incidents."
+      },
+      "FreshnessBoundary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "max_age_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Age Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "max_age_seconds"
+        ],
+        "title": "FreshnessBoundary",
+        "description": "A data-freshness bucket and the age (in seconds) it covers up to."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HierarchyNodeOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "entity_id": {
+            "type": "string",
+            "title": "Entity Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "path": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Path"
+          },
+          "children_count": {
+            "type": "integer",
+            "title": "Children Count"
+          },
+          "sensor_count": {
+            "type": "integer",
+            "title": "Sensor Count"
+          },
+          "attention_count": {
+            "type": "integer",
+            "title": "Attention Count"
+          },
+          "current_state": {
+            "type": "string",
+            "title": "Current State"
+          },
+          "risk_level": {
+            "type": "string",
+            "title": "Risk Level"
+          },
+          "has_children": {
+            "type": "boolean",
+            "title": "Has Children"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "parent_id",
+          "entity_type",
+          "entity_id",
+          "display_name",
+          "path",
+          "children_count",
+          "sensor_count",
+          "attention_count",
+          "current_state",
+          "risk_level",
+          "has_children"
+        ],
+        "title": "HierarchyNodeOut",
+        "description": "One node of a facility's hierarchy tree.\n\nsensor_count/attention_count/current_state/risk_level are honest MVP\nplaceholders (0/0/\"unknown\"/\"unknown\") pending ticket 05 (sensor\ntimeseries) and ticket 08 (risk); children_count/has_children/path\nare real, computed from the actual adjacency-list data."
+      },
+      "Incidents": {
+        "properties": {
+          "open_count": {
+            "type": "integer",
+            "title": "Open Count"
+          },
+          "critical_count": {
+            "type": "integer",
+            "title": "Critical Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "open_count",
+          "critical_count"
+        ],
+        "title": "Incidents",
+        "description": "Confirmed-incident counters — independent from forecast/current_state."
+      },
+      "Location": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Point",
+            "title": "Type",
+            "default": "Point"
+          },
+          "coordinates": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Coordinates"
+          },
+          "is_demo": {
+            "type": "boolean",
+            "title": "Is Demo",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "coordinates"
+        ],
+        "title": "Location",
+        "description": "A GeoJSON Point with an explicit demo-geometry flag.\n\nReal coordinates will never be provided (see\n`QA_ORGANIZERS_CLARIFICATIONS.md` section 12); this point is\ndeterministic (stable per facility_id) but not geographically real."
+      },
+      "LoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "description": "Credentials submitted to the mock LDAP/AD login endpoint."
+      },
+      "LoginResponse": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "LoginResponse",
+        "description": "The issued bearer session token."
+      },
+      "MeOut": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ScopeOut"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "locale": {
+            "type": "string",
+            "title": "Locale"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "permissions",
+          "scope",
+          "timezone",
+          "locale"
+        ],
+        "title": "MeOut",
+        "description": "The current user's identity, permissions, scope, and locale."
+      },
+      "MissingInterval": {
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "From"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from",
+          "to"
+        ],
+        "title": "MissingInterval",
+        "description": "A gap in the numeric series longer than the MVP heuristic bound."
+      },
+      "NumericPoint": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "quality": {
+            "type": "string",
+            "title": "Quality"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "value",
+          "state",
+          "quality"
+        ],
+        "title": "NumericPoint",
+        "description": "One raw or bucket-averaged numeric reading."
+      },
+      "NumericSeriesOut": {
+        "properties": {
+          "value_type": {
+            "type": "string",
+            "const": "numeric",
+            "title": "Value Type",
+            "default": "numeric"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/NumericPoint"
+            },
+            "type": "array",
+            "title": "Points"
+          },
+          "thresholds": {
+            "items": {
+              "$ref": "#/components/schemas/Threshold"
+            },
+            "type": "array",
+            "title": "Thresholds"
+          },
+          "missing_intervals": {
+            "items": {
+              "$ref": "#/components/schemas/MissingInterval"
+            },
+            "type": "array",
+            "title": "Missing Intervals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "points",
+          "thresholds",
+          "missing_intervals"
+        ],
+        "title": "NumericSeriesOut",
+        "description": "The numeric series response shape."
+      },
+      "PredictionWindow": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "PredictionWindow",
+        "description": "The forecast's predicted incident window (as_of + lead_min_hours .. + horizon_hours)."
+      },
+      "ReferenceConfig": {
+        "properties": {
+          "sensor_states": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sensor States"
+          },
+          "sensor_types": {
+            "items": {
+              "$ref": "#/components/schemas/SensorType"
+            },
+            "type": "array",
+            "title": "Sensor Types"
+          },
+          "units": {
+            "items": {
+              "$ref": "#/components/schemas/UnitOfMeasure"
+            },
+            "type": "array",
+            "title": "Units"
+          },
+          "risk_types": {
+            "items": {
+              "$ref": "#/components/schemas/RiskType"
+            },
+            "type": "array",
+            "title": "Risk Types"
+          },
+          "risk_levels": {
+            "items": {
+              "$ref": "#/components/schemas/RiskLevelThreshold"
+            },
+            "type": "array",
+            "title": "Risk Levels"
+          },
+          "reject_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/RejectReason"
+            },
+            "type": "array",
+            "title": "Reject Reasons"
+          },
+          "work_types": {
+            "items": {
+              "$ref": "#/components/schemas/WorkType"
+            },
+            "type": "array",
+            "title": "Work Types"
+          },
+          "work_order_statuses": {
+            "items": {
+              "$ref": "#/components/schemas/WorkOrderStatus"
+            },
+            "type": "array",
+            "title": "Work Order Statuses"
+          },
+          "decision_statuses": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionStatus"
+            },
+            "type": "array",
+            "title": "Decision Statuses"
+          },
+          "sla_params": {
+            "items": {
+              "$ref": "#/components/schemas/SlaParam"
+            },
+            "type": "array",
+            "title": "Sla Params"
+          },
+          "freshness_boundaries": {
+            "items": {
+              "$ref": "#/components/schemas/FreshnessBoundary"
+            },
+            "type": "array",
+            "title": "Freshness Boundaries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sensor_states",
+          "sensor_types",
+          "units",
+          "risk_types",
+          "risk_levels",
+          "reject_reasons",
+          "work_types",
+          "work_order_statuses",
+          "decision_statuses",
+          "sla_params",
+          "freshness_boundaries"
+        ],
+        "title": "ReferenceConfig",
+        "description": "The complete reference/config bundle the frontend must not hardcode."
+      },
+      "RejectReason": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "requires_comment": {
+            "type": "boolean",
+            "title": "Requires Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "requires_comment"
+        ],
+        "title": "RejectReason",
+        "description": "A reason code selectable when rejecting a risk forecast."
+      },
+      "RejectRequest": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "title": "Expected Version"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expected_version"
+        ],
+        "title": "RejectRequest",
+        "description": "Body for POST /api/v1/risks/{risk_id}/reject.\n\nreason_code is Optional at the schema level -- its presence is a\ndomain rule (contract: \"reject requires reason_code\"), enforced as a\n422 DOMAIN_VALIDATION_ERROR by the endpoint, not a 400 structural\nvalidation error."
+      },
+      "RiskLevelThreshold": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "min_probability": {
+            "type": "number",
+            "title": "Min Probability"
+          },
+          "max_probability": {
+            "type": "number",
+            "title": "Max Probability"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "min_probability",
+          "max_probability"
+        ],
+        "title": "RiskLevelThreshold",
+        "description": "A risk level and the probability range that determines it."
+      },
+      "RiskListEnvelope": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/RiskOut"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/RiskListMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "RiskListEnvelope",
+        "description": "The standard {data, meta} envelope for GET /api/v1/risks."
+      },
+      "RiskListMeta": {
+        "properties": {
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "next_cursor",
+          "total",
+          "generated_at"
+        ],
+        "title": "RiskListMeta",
+        "description": "Cursor-pagination metadata for the risk list envelope."
+      },
+      "RiskOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "forecast_id": {
+            "type": "string",
+            "title": "Forecast Id"
+          },
+          "risk_type": {
+            "type": "string",
+            "title": "Risk Type"
+          },
+          "target": {
+            "$ref": "#/components/schemas/RiskTarget"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "lead_min_hours": {
+            "type": "number",
+            "title": "Lead Min Hours"
+          },
+          "horizon_hours": {
+            "type": "number",
+            "title": "Horizon Hours"
+          },
+          "prediction_window": {
+            "$ref": "#/components/schemas/PredictionWindow"
+          },
+          "probability": {
+            "type": "number",
+            "title": "Probability"
+          },
+          "threshold": {
+            "type": "number",
+            "title": "Threshold"
+          },
+          "risk_level": {
+            "type": "string",
+            "title": "Risk Level"
+          },
+          "priority_score": {
+            "type": "number",
+            "title": "Priority Score"
+          },
+          "decision_status": {
+            "type": "string",
+            "title": "Decision Status"
+          },
+          "sla_due_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Sla Due At"
+          },
+          "data_health": {
+            "type": "string",
+            "title": "Data Health"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "top_factors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Top Factors"
+          },
+          "recommendation": {
+            "type": "string",
+            "title": "Recommendation"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "forecast_id",
+          "risk_type",
+          "target",
+          "as_of",
+          "lead_min_hours",
+          "horizon_hours",
+          "prediction_window",
+          "probability",
+          "threshold",
+          "risk_level",
+          "priority_score",
+          "decision_status",
+          "sla_due_at",
+          "data_health",
+          "model",
+          "top_factors",
+          "recommendation",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RiskOut",
+        "description": "The full risk forecast card."
+      },
+      "RiskTarget": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "facility_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "facility_id"
+        ],
+        "title": "RiskTarget",
+        "description": "What this forecast is about -- always a sensor in this ticket's scope."
+      },
+      "RiskType": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "RiskType",
+        "description": "A predictable incident/failure category."
+      },
+      "ScenarioListEnvelope": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ScenarioOut"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ScenarioListEnvelope",
+        "description": "The standard {data} envelope for GET /api/v1/system/scenarios."
+      },
+      "ScenarioOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "category",
+          "description"
+        ],
+        "title": "ScenarioOut",
+        "description": "One fixture scenario's metadata (no step details -- those are internal)."
+      },
+      "ScopeOut": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "facility_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "ScopeOut",
+        "description": "The resolved scope: all facilities, or an assigned subset."
+      },
+      "SensorDetailOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "channel_id": {
+            "type": "string",
+            "title": "Channel Id"
+          },
+          "tag": {
+            "type": "string",
+            "title": "Tag"
+          },
+          "sensor_type": {
+            "type": "string",
+            "title": "Sensor Type"
+          },
+          "system_type": {
+            "type": "string",
+            "title": "System Type"
+          },
+          "value_type": {
+            "type": "string",
+            "title": "Value Type"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "facility_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Id"
+          },
+          "hierarchy_node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hierarchy Node Id"
+          },
+          "has_geolocation": {
+            "type": "boolean",
+            "title": "Has Geolocation",
+            "default": false
+          },
+          "position": {
+            "type": "null",
+            "title": "Position"
+          },
+          "hierarchy_path": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hierarchy Path"
+          },
+          "current_reading": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentReading"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "current_state": {
+            "type": "string",
+            "title": "Current State"
+          },
+          "forecast_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast Summary"
+          },
+          "data_health": {
+            "type": "string",
+            "title": "Data Health"
+          },
+          "maintenance_state": {
+            "type": "string",
+            "title": "Maintenance State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "channel_id",
+          "tag",
+          "sensor_type",
+          "system_type",
+          "value_type",
+          "display_name",
+          "facility_id",
+          "hierarchy_node_id",
+          "hierarchy_path",
+          "current_reading",
+          "current_state",
+          "forecast_summary",
+          "data_health",
+          "maintenance_state"
+        ],
+        "title": "SensorDetailOut",
+        "description": "The full sensor detail card (superset of the list item shape)."
+      },
+      "SensorListEnvelope": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SensorOut"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/SensorListMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "SensorListEnvelope",
+        "description": "The standard {data, meta} envelope for GET /api/v1/sensors."
+      },
+      "SensorListMeta": {
+        "properties": {
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "next_cursor",
+          "total",
+          "generated_at"
+        ],
+        "title": "SensorListMeta",
+        "description": "Cursor-pagination metadata for the sensor list envelope."
+      },
+      "SensorOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "channel_id": {
+            "type": "string",
+            "title": "Channel Id"
+          },
+          "tag": {
+            "type": "string",
+            "title": "Tag"
+          },
+          "sensor_type": {
+            "type": "string",
+            "title": "Sensor Type"
+          },
+          "system_type": {
+            "type": "string",
+            "title": "System Type"
+          },
+          "value_type": {
+            "type": "string",
+            "title": "Value Type"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "facility_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Id"
+          },
+          "hierarchy_node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hierarchy Node Id"
+          },
+          "has_geolocation": {
+            "type": "boolean",
+            "title": "Has Geolocation",
+            "default": false
+          },
+          "position": {
+            "type": "null",
+            "title": "Position"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "channel_id",
+          "tag",
+          "sensor_type",
+          "system_type",
+          "value_type",
+          "display_name",
+          "facility_id",
+          "hierarchy_node_id"
+        ],
+        "title": "SensorOut",
+        "description": "A sensor channel as it appears in the list."
+      },
+      "SensorType": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "system_type": {
+            "type": "string",
+            "title": "System Type"
+          },
+          "value_type": {
+            "type": "string",
+            "enum": [
+              "numeric",
+              "categorical"
+            ],
+            "title": "Value Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "system_type",
+          "value_type"
+        ],
+        "title": "SensorType",
+        "description": "One sensor type from the equipment/channel catalogue."
+      },
+      "SlaParam": {
+        "properties": {
+          "risk_level": {
+            "type": "string",
+            "title": "Risk Level"
+          },
+          "response_minutes": {
+            "type": "integer",
+            "title": "Response Minutes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "risk_level",
+          "response_minutes"
+        ],
+        "title": "SlaParam",
+        "description": "The target response time for a given risk level."
+      },
+      "SourceHealthEntry": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "delay_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delay Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "display_name",
+          "status",
+          "last_success_at",
+          "delay_seconds"
+        ],
+        "title": "SourceHealthEntry",
+        "description": "Status of one upstream data source (see ticket 06 emulation module)."
+      },
+      "SourceHealthEntryOut": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "delay_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delay Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "display_name",
+          "status",
+          "last_success_at",
+          "delay_seconds"
+        ],
+        "title": "SourceHealthEntryOut",
+        "description": "Status of one upstream data source."
+      },
+      "SourceHealthEnvelope": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SourceHealthEntryOut"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/SourceHealthMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "SourceHealthEnvelope",
+        "description": "The standard {data, meta} envelope for GET /api/v1/system/source-health."
+      },
+      "SourceHealthMeta": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at"
+        ],
+        "title": "SourceHealthMeta",
+        "description": "Envelope metadata for the source-health response."
+      },
+      "Threshold": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "value"
+        ],
+        "title": "Threshold",
+        "description": "A named threshold value (always empty for MVP -- see module docstring)."
+      },
+      "UnitOfMeasure": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "symbol"
+        ],
+        "title": "UnitOfMeasure",
+        "description": "A unit of measurement used by numeric sensor readings."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WorkOrderListEnvelope": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/WorkOrderOut"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/WorkOrderListMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "WorkOrderListEnvelope",
+        "description": "The standard {data, meta} envelope for GET /api/v1/work-orders."
+      },
+      "WorkOrderListMeta": {
+        "properties": {
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "next_cursor",
+          "total",
+          "generated_at"
+        ],
+        "title": "WorkOrderListMeta",
+        "description": "Cursor-pagination metadata for the work-order list envelope."
+      },
+      "WorkOrderOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_number": {
+            "type": "string",
+            "title": "Display Number"
+          },
+          "source_risk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Risk Id"
+          },
+          "facility_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Id"
+          },
+          "target_entity_type": {
+            "type": "string",
+            "title": "Target Entity Type"
+          },
+          "target_entity_id": {
+            "type": "string",
+            "title": "Target Entity Id"
+          },
+          "work_type": {
+            "type": "string",
+            "title": "Work Type"
+          },
+          "priority": {
+            "type": "string",
+            "title": "Priority"
+          },
+          "due_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Due At"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_number",
+          "source_risk_id",
+          "facility_id",
+          "target_entity_type",
+          "target_entity_id",
+          "work_type",
+          "priority",
+          "due_at",
+          "description",
+          "comment",
+          "status",
+          "created_by",
+          "created_at",
+          "updated_at",
+          "version"
+        ],
+        "title": "WorkOrderOut",
+        "description": "One work order's full representation."
+      },
+      "WorkOrderStatus": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "WorkOrderStatus",
+        "description": "A status in the work order lifecycle."
+      },
+      "WorkType": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "WorkType",
+        "description": "A category of maintenance/repair work order."
+      }
+    }
+  }
+}

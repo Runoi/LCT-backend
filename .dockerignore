@@ -1,0 +1,7 @@
+.venv
+.git
+.unlazy
+.scratch
+__pycache__
+*.pyc
+.env

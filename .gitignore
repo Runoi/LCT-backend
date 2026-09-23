@@ -1,0 +1,45 @@
+
+.claude/
+.agents/
+skills-lock.json
+.unlazy/
+.unlazy-hook-state.json
+.scratch/
+CLAUDE.md
+agents/
+# ==== Python ====
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+ENV/
+.Python
+build/
+dist/
+
+# ==== Testing / coverage ====
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ==== Environment / secrets ====
+.env
+.env.*
+!.env.example
+
+# ==== Editors / OS ====
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# ==== Logs ====
+*.log
