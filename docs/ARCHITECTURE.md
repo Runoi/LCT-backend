@@ -16,7 +16,9 @@ Facility/District
 
 Параллельно, независимо от этой цепочки:
 
-- **Auth/RBAC** — capability + scope модель (`docs/adr/0002`), пронизывает все домены сверху (каждый список/карточка фильтруется по scope вызывающего).
+- **Auth/RBAC** — capability + scope модель (`docs/adr/0002`), пронизывает все домены сверху (каждый список/карточка фильтруется по scope вызывающего). Сессии с ограниченным сроком жизни, выход, защита входа от перебора паролей.
+- **Журнал аудита** — общий middleware записывает каждый изменяющий запрос (кто, что, над каким объектом, результат, IP, `trace_id`) в `audit_log`; чтение — `GET /api/v1/audit`. Подробно — `docs/SECURITY.md`.
+- **TLS-прокси** — nginx перед приложением: снаружи доступен только HTTPS (TLS 1.2/1.3), приложение и база в сеть хоста не публикуются.
 - **Эмуляция внешних источников** — СМВУ (replay поверх реальных показаний + fixture-сценарии), ОДС/реестр оборудования/система заявок (полностью синтетические, но выведены из реальных распределений). Отдельный слой `GET /system/source-health`, не завязан на бизнес-цепочку выше.
 - **ML Prediction Port** (`docs/adr/0006`) — HTTP-граница между backend и ML-частью. Backend вызывает `POST {ML_PREDICTOR_URL}/predict`; при отсутствии `ML_PREDICTOR_URL` использует встроенный `StubPredictor`. Контракт (вход/выход) — единственное, что должна знать ML-команда, реализация backend'а им не видна и не важна.
 
@@ -32,8 +34,9 @@ src/
   db.py           # engine/session factory
   config.py       # Settings (pydantic-settings, читает переменные окружения)
   errors.py       # единый формат ошибок {error: {code, message, trace_id, details, retryable}}
-  main.py         # сборка приложения: регистрация роутеров, lifespan (seed + синки + replay-таск)
+  main.py         # сборка приложения: middleware журнала аудита, регистрация роутеров, lifespan (seed + синки + replay-таск)
 
+proxy/            # TLS-прокси (nginx): конфигурация, автогенерация самоподписанного сертификата
 alembic/          # миграции схемы, по одной на домен
 tests/            # pytest, зеркалит структуру src/ по одному файлу на сценарий
 data/             # реальные CSV-датасеты (справочник каналов, справочник объектов, журнал событий — операционное окно)
@@ -48,7 +51,8 @@ docs/adr/         # architecture decision records — почему принят�
 
 | Домен | Таблицы |
 |---|---|
-| Auth/RBAC | `users`, `user_permissions`, `districts`, `district_facilities`, `user_scope*`, `sessions` |
+| Auth/RBAC | `users`, `user_permissions`, `districts`, `district_facilities`, `user_scope*`, `sessions` (со сроком действия `expires_at`), `login_failures` (неудачные входы для защиты от перебора) |
+| Журнал аудита | `audit_log` |
 | Facility/иерархия объектов | `facilities`, `hierarchy_nodes` |
 | ETL датчиков | `sensor_channels`, `sensor_readings`, `etl_ingested_sources` |
 | Эмуляция внешних источников | `replay_state`, `ods_journal_entries`, `equipment_registry_items`, `external_work_order_records`, `synthetic_provider_runs`, `source_health_overrides` |

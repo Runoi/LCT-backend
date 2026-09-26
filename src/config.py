@@ -18,6 +18,13 @@ class Settings(BaseSettings):
             Port implementation (ticket 08, ADR 0006). When unset, the
             backend falls back to the in-process StubPredictor -- swapping
             in a real model never requires a backend code change.
+        session_ttl_minutes: Lifetime of a login session; an expired
+            bearer token is rejected with 401 SESSION_EXPIRED.
+        login_max_failures_per_username: Failed logins for one username
+            inside the window that lock further attempts (429).
+        login_max_failures_per_ip: Same limit per client IP; higher so an
+            office behind one NAT is not locked by a few typos.
+        login_failure_window_seconds: Sliding window for both limits.
     """
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -28,6 +35,10 @@ class Settings(BaseSettings):
     replay_speed_multiplier: float = 360.0
     replay_tick_seconds: float = 5.0
     ml_predictor_url: str | None = None
+    session_ttl_minutes: int = 480
+    login_max_failures_per_username: int = 5
+    login_max_failures_per_ip: int = 20
+    login_failure_window_seconds: int = 900
 
 
 @lru_cache

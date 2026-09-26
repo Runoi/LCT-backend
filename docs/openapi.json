@@ -33,7 +33,7 @@
           "auth"
         ],
         "summary": "Login",
-        "description": "Authenticate a demo user and issue a server-side session token.\n\nArgs:\n    body: The submitted username/password.\n\nReturns:\n    A LoginResponse carrying the new bearer token.\n\nRaises:\n    HTTPException: 401 if the credentials are invalid.",
+        "description": "Authenticate a demo user and issue a server-side session token.\n\nArgs:\n    body: The submitted username/password.\n    request: The current request; the submitted login (never the\n        password) is attached for the audit journal.\n\nReturns:\n    A LoginResponse carrying the new bearer token.\n\nRaises:\n    HTTPException: 401 if the credentials are invalid.",
         "operationId": "login_api_v1_auth_login_post",
         "requestBody": {
           "content": {
@@ -55,6 +55,49 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "description": "Revoke the caller's own session token immediately.\n\nArgs:\n    request: The current request; the actor is attached for the audit\n        journal before revocation (afterwards the token no longer resolves).\n    authorization: The raw bearer header of the session being closed.\n    user: The authenticated caller (401 if the token is missing, expired or revoked).",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -1028,7 +1071,7 @@
           "system"
         ],
         "summary": "Activate Scenario Endpoint",
-        "description": "Activate a fixture scenario against a real facility.",
+        "description": "Activate a fixture scenario against a real facility within the caller's scope.\n\nRaises:\n    ApiError: 403 if the facility is outside the caller's scope (checked\n        before anything is written); 422 if the scenario cannot run there.",
         "operationId": "activate_scenario_endpoint_api_v1_system_scenarios__scenario_id__activate_post",
         "parameters": [
           {
@@ -1695,7 +1738,7 @@
           "work-orders"
         ],
         "summary": "Post Work Order",
-        "description": "Create a draft work order.\n\nArgs:\n    body: The creation request; mode must be \"draft\".\n    user: The authenticated caller, injected by require_any_permission.\n\nReturns:\n    The created work order.\n\nRaises:\n    ApiError: 422 for mode != \"draft\" or an unknown work_type/priority/\n        target_entity_type; 403 if facility_id is outside the caller's scope.",
+        "description": "Create a draft work order.\n\nArgs:\n    body: The creation request; mode must be \"draft\".\n    request: The current request, used to enrich the audit journal entry.\n    user: The authenticated caller, injected by require_any_permission.\n\nReturns:\n    The created work order.\n\nRaises:\n    ApiError: 422 for mode != \"draft\" or an unknown work_type/priority/\n        target_entity_type; 403 if facility_id is outside the caller's scope.",
         "operationId": "post_work_order_api_v1_work_orders_post",
         "parameters": [
           {
@@ -1873,6 +1916,148 @@
         }
       }
     },
+    "/api/v1/audit": {
+      "get": {
+        "tags": [
+          "audit"
+        ],
+        "summary": "Get Audit Journal",
+        "description": "List journaled user actions, newest first.\n\nArgs:\n    user_id: Optional exact actor filter.\n    action: Optional exact action filter, e.g. \"POST /api/v1/work-orders\".\n    from_: Optional ISO 8601 inclusive lower bound on occurred_at.\n    to: Optional ISO 8601 inclusive upper bound on occurred_at.\n    cursor: Opaque pagination cursor from the previous page's meta.\n    limit: Page size, 1-200.\n    _: The caller; must hold audit.read.\n\nReturns:\n    An AuditListEnvelope with one page of entries.",
+        "operationId": "get_audit_journal_api_v1_audit_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditListEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -1979,6 +2164,172 @@
         ],
         "title": "Assets",
         "description": "Counts of the facility's owned equipment/sensors."
+      },
+      "AuditEntryOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "target_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Type"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "result": {
+            "type": "string",
+            "title": "Result"
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code"
+          },
+          "ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip"
+          },
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "occurred_at",
+          "user_id",
+          "username",
+          "action",
+          "target_type",
+          "target_id",
+          "result",
+          "status_code",
+          "ip",
+          "trace_id",
+          "details"
+        ],
+        "title": "AuditEntryOut",
+        "description": "One journaled user action."
+      },
+      "AuditListEnvelope": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEntryOut"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/AuditListMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "AuditListEnvelope",
+        "description": "The standard {data, meta} envelope for GET /api/v1/audit."
+      },
+      "AuditListMeta": {
+        "properties": {
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "next_cursor",
+          "total",
+          "generated_at"
+        ],
+        "title": "AuditListMeta",
+        "description": "Cursor-pagination metadata for the audit journal envelope."
       },
       "CategoricalInterval": {
         "properties": {

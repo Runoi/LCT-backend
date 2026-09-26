@@ -1,11 +1,12 @@
 """Password hashing and server-side session management (mock LDAP/AD)."""
 import hashlib
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config import get_settings
 from src.models.auth import User, UserSession
 
 _PBKDF2_ITERATIONS = 200_000
@@ -59,36 +60,50 @@ async def authenticate(session: AsyncSession, username: str, password: str) -> U
     return user
 
 
-async def create_session(session: AsyncSession, user_id: str) -> str:
+async def create_session(session: AsyncSession, user_id: str, *, now: datetime | None = None) -> str:
     """Issue a new opaque server-side session token for a user.
 
     Args:
         session: An active async database session.
         user_id: The id of the user to issue a session for.
+        now: Issue time (injectable for tests); defaults to the current UTC time.
 
     Returns:
-        The new session token.
+        The new session token, valid for SESSION_TTL_MINUTES from `now`.
     """
+    issued_at = now or datetime.now(timezone.utc)
     token = secrets.token_urlsafe(32)
-    session.add(UserSession(token=token, user_id=user_id))
+    session.add(
+        UserSession(
+            token=token,
+            user_id=user_id,
+            created_at=issued_at,
+            expires_at=issued_at + timedelta(minutes=get_settings().session_ttl_minutes),
+        )
+    )
     await session.commit()
     return token
 
 
-async def get_active_session_user(session: AsyncSession, token: str) -> User | None:
-    """Resolve a bearer token to its user, honoring immediate revocation.
+async def get_active_session_user(
+    session: AsyncSession, token: str, *, now: datetime | None = None
+) -> User | None:
+    """Resolve a bearer token to its user, honoring expiry and immediate revocation.
 
     Args:
         session: An active async database session.
         token: The bearer token from the Authorization header.
+        now: Evaluation time (injectable for tests); defaults to the current UTC time.
 
     Returns:
-        The User if the token exists and has not been revoked, else None.
+        The User if the token exists, is not revoked and has not expired, else None.
     """
     user_session = (
         await session.execute(select(UserSession).where(UserSession.token == token))
     ).scalar_one_or_none()
     if user_session is None or user_session.revoked_at is not None:
+        return None
+    if user_session.expires_at <= (now or datetime.now(timezone.utc)):
         return None
     return (await session.execute(select(User).where(User.id == user_session.user_id))).scalar_one_or_none()
 

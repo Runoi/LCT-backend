@@ -5,11 +5,12 @@ District/DistrictFacility double as the ticket-04 grouping entity (see
 table is seeded from the real facility catalogue, not a parallel structure.
 """
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
+from src.config import get_settings
 from src.models.base import Base
 
 
@@ -19,6 +20,11 @@ def _uuid() -> str:
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _default_session_expiry() -> datetime:
+    # Любой путь вставки сессии получает срок действия, а не только create_session.
+    return _utcnow() + timedelta(minutes=get_settings().session_ttl_minutes)
 
 
 class User(Base):
@@ -92,11 +98,12 @@ class UserScopeDistrict(Base):
 
 
 class UserSession(Base):
-    """A server-side session token, so revocation can take effect immediately."""
+    """A server-side session token with a fixed expiry; revocation takes effect immediately."""
 
     __tablename__ = "sessions"
 
     token: Mapped[str] = mapped_column(String, primary_key=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_default_session_expiry)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
