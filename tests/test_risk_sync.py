@@ -15,6 +15,7 @@ from src.models.hierarchy import Facility
 from src.models.risk import Risk
 from src.models.sensor import SensorChannel, SensorReading
 from src.services.ml_port import PredictionInput, PredictionResult
+from src.services.ml_predictor_http import MLPredictorError
 from src.services.risk_sync import risk_type_for_system_type, sync_risks
 
 
@@ -151,3 +152,41 @@ async def test_security_system_type_maps_to_unauthorized_access_risk() -> None:
     async with async_session_factory() as session:
         risk = (await session.execute(select(Risk).where(Risk.target_id == sensor_id))).scalar_one()
     assert risk.risk_type == "unauthorized_access"
+
+
+class _FailingForSensorPredictor:
+    """Answers like the real ML service: 422-style error for one channel, a prediction for the rest."""
+
+    def __init__(self, failing_sensor_id: str) -> None:
+        self.failing_sensor_id = failing_sensor_id
+
+    async def predict(self, prediction_input: PredictionInput) -> PredictionResult:
+        if prediction_input.target_id == self.failing_sensor_id:
+            raise MLPredictorError('ML predictor returned 422: {"status": "insufficient_data"}')
+        return _fixed_result()
+
+
+@pytest.mark.asyncio
+async def test_ml_error_for_one_channel_skips_only_that_channel() -> None:
+    failing = await _seed_channel("ml_error_failing", "fac_risk_sync_ml_error")
+    healthy = await _seed_channel("ml_error_healthy", "fac_risk_sync_ml_error")
+    base = datetime(2036, 3, 1, tzinfo=timezone.utc)
+    await _add_reading(failing, base, "ml_error_failing")
+    await _add_reading(healthy, base + timedelta(minutes=1), "ml_error_healthy")
+
+    predictor = _FailingForSensorPredictor(f"sensor_{failing}")
+    async with async_session_factory() as session:
+        await sync_risks(session, predictor, now=base + timedelta(hours=1))
+
+    async with async_session_factory() as session:
+        failing_risks = (await session.execute(select(Risk).where(Risk.target_id == f"sensor_{failing}"))).scalars().all()
+        healthy_risks = (await session.execute(select(Risk).where(Risk.target_id == f"sensor_{healthy}"))).scalars().all()
+    assert failing_risks == [], "a channel the ML service rejects must not get a risk"
+    assert len(healthy_risks) == 1, "the ML error must not stop other channels"
+
+    # Курсор сдвинулся: повторная синхронизация не долбит ML тем же каналом по кругу.
+    async with async_session_factory() as session:
+        await sync_risks(session, predictor, now=base + timedelta(hours=2))
+    async with async_session_factory() as session:
+        again = (await session.execute(select(Risk).where(Risk.target_id == f"sensor_{healthy}"))).scalars().all()
+    assert len(again) == 1

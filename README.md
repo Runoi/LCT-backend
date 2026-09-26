@@ -115,6 +115,51 @@ docker compose run --rm --no-deps app sh -c "alembic upgrade head && pytest -q"
 | `HTTPS_PORT` | порт хоста для HTTPS (docker compose) | `8443` |
 | `HTTP_PORT` | порт хоста для перенаправления с HTTP (docker compose) | `8080` |
 
-## Переключение на реальную ML-модель
+## Подключение ML-сервиса
 
-Backend взаимодействует с ML-частью через простой HTTP-контракт (не Python-интерфейс внутри бэкенда — команды пишут код параллельно и асинхронно, см. `docs/adr/0001-backend-only-mvp-scope-with-integration-ports.md` и `0006-ml-port-bespoke-not-indastrics-shaped.md`). Чтобы подключить обученную модель вместо `StubPredictor`, ML-команде достаточно поднять сервис, отвечающий `POST {ML_PREDICTOR_URL}/predict` по контракту в `src/services/ml_port.py` (`PredictionInput`/`PredictionResult`), и указать его URL в `ML_PREDICTOR_URL` — код бэкенда менять не нужно.
+Backend взаимодействует с ML-частью через HTTP-контракт, а не через Python-интерфейс внутри бэкенда (`docs/adr/0001-backend-only-mvp-scope-with-integration-ports.md`, `docs/adr/0006-ml-port-bespoke-not-indastrics-shaped.md`). Вызовы идут только в одну сторону: **backend сам обращается к ML-сервису**, ML-сервису не нужен ни токен, ни доступ к API или базе backend.
+
+Что backend вызывает по адресу `ML_PREDICTOR_URL`:
+
+| Вызов | Когда | Контракт |
+|---|---|---|
+| `POST /predict` | при старте, один раз на каждый канал с тревогами без прогноза | `PredictionInput` / `PredictionResult` в `src/services/ml_port.py` |
+| `POST /risk_map` с `target` = `incident` и `failure` | один раз при старте | ответ со списком `objects`; объект с `alert` становится риском по объекту (`target_type = "facility"`), см. `src/services/object_risk_sync.py` |
+
+Без `ML_PREDICTOR_URL` backend работает на встроенном `StubPredictor`, риски по объектам не создаются.
+
+### Запуск вместе с ML-сервисом (репозиторий LCT-ML)
+
+1. Поднять ML-сервис на хосте. Запускайте его с `--host 0.0.0.0`: на Docker Desktop (Windows/macOS) контейнер видит и сервис на `127.0.0.1`, но на Linux — только слушающий внешний интерфейс:
+
+   ```
+   .venv/bin/python outputs/ml-service/service.py --prepared work/ml-prepared \
+     --config outputs/ml-dataset/dataset-config.json --decision outputs/ml-baseline-v2/decision.json \
+     --directory <справочник_каналов_датчиков.csv> \
+     --object-decision outputs/ml-baseline-v2/run-008-incident72/object-decision.json \
+     --object-decision outputs/ml-baseline-v2/run-009-neispraven168/object-decision.json \
+     --host 0.0.0.0 --port 8090 --demo-anchor 2026-06-20T00:00:00
+   ```
+
+   `--demo-anchor` нужен, потому что backend спрашивает прогноз на текущее время, а журнал ML заканчивается 30.06.2026.
+
+2. Поднять backend, указав адрес ML-сервиса. Из контейнера хост-машина доступна как `host.docker.internal`:
+
+   ```
+   ML_PREDICTOR_URL=http://host.docker.internal:8090 docker compose up --build
+   ```
+
+   В PowerShell: `$env:ML_PREDICTOR_URL="http://host.docker.internal:8090"; docker compose up --build`.
+
+3. Проверить: `GET https://localhost:8443/api/v1/risks` под `manager` — у рисков в поле `model` будет имя модели ML-сервиса, риски по объектам имеют `target.type = "facility"`.
+
+Если backend запущен локально без Docker, адрес — `ML_PREDICTOR_URL=http://127.0.0.1:8090`.
+
+### Поведение при ошибках ML
+
+- Ответ ML с ошибкой (например, `422 insufficient_data` для канала без свежих данных) или недоступный сервис не роняют backend: канал пропускается, в лог пишется предупреждение с числом пропущенных каналов, курсор событий сдвигается, повторных запросов по кругу нет.
+- Если `/risk_map` недоступен или ответил некорректно, риски по объектам не создаются (предупреждение в логе), остальной старт продолжается.
+
+### Известное расхождение шкал
+
+Уровни риска backend считает по вероятности с порогами 0,3 / 0,6 / 0,85, а рабочие пороги моделей ML ниже (например, 0,147 для канальной модели). Поэтому часть прогнозов с тревогой модели попадёт в «Низкий» уровень — шкалу нужно согласовать между командами.

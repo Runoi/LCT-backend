@@ -20,6 +20,12 @@ services:
       DATABASE_URL: postgresql+asyncpg://mkl:mkl@db:5432/mkl
       APP_ENV: docker
       LOG_LEVEL: INFO
+      # ML Prediction Port. Unset -> built-in StubPredictor. A service running on the
+      # host machine is reached as http://host.docker.internal:<port>.
+      ML_PREDICTOR_URL: ${ML_PREDICTOR_URL:-}
+    extra_hosts:
+      # Docker Desktop resolves this name itself; on Linux it needs the explicit gateway mapping.
+      - "host.docker.internal:host-gateway"
     # No host port: all traffic goes through the TLS proxy.
     expose:
       - "8000"

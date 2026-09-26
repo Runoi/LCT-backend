@@ -1,5 +1,6 @@
 """FastAPI application entrypoint."""
 import asyncio
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -28,7 +29,8 @@ from src.services.demo_seed import seed_demo_users
 from src.services.equipment_registry_provider import generate_equipment_registry
 from src.services.event_etl import ingest_event_log
 from src.services.event_sync import sync_events
-from src.services.ml_predictor_factory import get_predictor
+from src.services.ml_predictor_factory import get_object_risk_client, get_predictor
+from src.services.object_risk_sync import ObjectRiskError, sync_object_risks
 from src.services.risk_sync import sync_risks
 from src.services.facility_seed import seed_facility_catalogue
 from src.services.ods_journal_provider import generate_ods_journal
@@ -54,6 +56,13 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         await generate_work_order_backlog(session)
         await sync_events(session)
         await sync_risks(session, get_predictor())
+        object_client = get_object_risk_client()
+        if object_client is not None:
+            async with object_client:
+                try:
+                    await sync_object_risks(session, object_client)
+                except ObjectRiskError as exc:
+                    logging.getLogger(__name__).warning("object risk sync skipped: %s", exc)
 
     replay_task = asyncio.create_task(run_replay_loop(async_session_factory))
     try:

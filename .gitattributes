@@ -1,0 +1,3 @@
+# CSV datasets and fixtures keep their exact bytes: quoted fields contain real
+# line breaks, and CRLF conversion on checkout would change parsed values.
+*.csv -text

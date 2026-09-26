@@ -5,7 +5,13 @@ creates one Risk, and links every event in the group back via
 related_risk_id -- the real write path ticket 07 left as a placeholder.
 Idempotent via RiskSyncState.last_synced_event_id (mirrors
 event_sync.py's own high-water-mark pattern).
+
+A predictor error for one group (e.g. the ML service answering 422
+"insufficient_data" for a channel, or being unreachable) skips only that
+group: the cursor still advances, so startup never fails because of the
+ML service and a group is not retried in a loop.
 """
+import logging
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
@@ -18,6 +24,7 @@ from src.models.risk import SINGLETON_ID, Risk, RiskSyncState
 from src.models.sensor import SensorChannel
 from src.services.event_sync import sync_events
 from src.services.ml_port import MLPredictor, PredictionInput
+from src.services.ml_predictor_http import MLPredictorError
 from src.services.risk_leveling import (
     compute_data_health,
     compute_priority_score,
@@ -26,6 +33,8 @@ from src.services.risk_leveling import (
 )
 
 _BATCH_SIZE = 2000
+
+logger = logging.getLogger(__name__)
 
 _RISK_TYPE_BY_SYSTEM_TYPE: dict[str, str] = {
     "fire_protection": "fire",
@@ -72,6 +81,8 @@ async def sync_risks(session: AsyncSession, predictor: MLPredictor, *, now: date
         session.add(state)
 
     created_count = 0
+    skipped_count = 0
+    last_error: MLPredictorError | None = None
     while True:
         rows = (
             await session.execute(
@@ -103,17 +114,22 @@ async def sync_risks(session: AsyncSession, predictor: MLPredictor, *, now: date
             occurred_ats = [e.occurred_at for e in group_events]
             window_hours = max((max(occurred_ats) - min(occurred_ats)).total_seconds() / 3600.0, 1.0)
 
-            prediction = await predictor.predict(
-                PredictionInput(
-                    target_type="sensor",
-                    target_id=sensor_id,
-                    risk_type=risk_type,
-                    as_of=now,
-                    recent_alarm_count=alarm_count,
-                    recent_anomaly_count=anomaly_count,
-                    window_hours=window_hours,
+            try:
+                prediction = await predictor.predict(
+                    PredictionInput(
+                        target_type="sensor",
+                        target_id=sensor_id,
+                        risk_type=risk_type,
+                        as_of=now,
+                        recent_alarm_count=alarm_count,
+                        recent_anomaly_count=anomaly_count,
+                        window_hours=window_hours,
+                    )
                 )
-            )
+            except MLPredictorError as exc:
+                skipped_count += 1
+                last_error = exc
+                continue
 
             risk_level, threshold = risk_level_for_probability(prediction.probability)
             sla_due_at = sla_due_at_for_risk_level(risk_level, now)
@@ -161,4 +177,10 @@ async def sync_risks(session: AsyncSession, predictor: MLPredictor, *, now: date
         if len(rows) < _BATCH_SIZE:
             break
 
+    if skipped_count:
+        logger.warning(
+            "risk sync: %d sensor group(s) skipped because the ML predictor failed; last error: %s",
+            skipped_count,
+            last_error,
+        )
     return created_count
