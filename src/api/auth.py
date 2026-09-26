@@ -1,5 +1,5 @@
 """POST /api/v1/auth/login — mock LDAP/AD authentication."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from src.db import async_session_factory
@@ -22,11 +22,13 @@ class LoginResponse(BaseModel):
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(body: LoginRequest) -> LoginResponse:
+async def login(body: LoginRequest, request: Request) -> LoginResponse:
     """Authenticate a demo user and issue a server-side session token.
 
     Args:
         body: The submitted username/password.
+        request: The current request; the submitted login (never the
+            password) is attached for the audit journal.
 
     Returns:
         A LoginResponse carrying the new bearer token.
@@ -34,9 +36,11 @@ async def login(body: LoginRequest) -> LoginResponse:
     Raises:
         HTTPException: 401 if the credentials are invalid.
     """
+    request.state.audit["username"] = body.username
     async with async_session_factory() as session:
         user = await authenticate(session, body.username, body.password)
         if user is None:
             raise HTTPException(status_code=401, detail="invalid username or password")
+        request.state.audit["user_id"] = user.id
         token = await create_session(session, user.id)
     return LoginResponse(token=token)

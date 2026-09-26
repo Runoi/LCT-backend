@@ -1,7 +1,7 @@
 """POST/GET /api/v1/work-orders -- local, backend-owned work-order lifecycle."""
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 
 from src.db import async_session_factory
 from src.deps.auth import require_any_permission, require_permission
@@ -23,12 +23,14 @@ _VALID_TARGET_ENTITY_TYPES = {"sensor", "facility", "hierarchy_node"}
 @router.post("/work-orders", response_model=WorkOrderOut, status_code=201)
 async def post_work_order(
     body: CreateWorkOrderRequest,
+    request: Request,
     user: User = Depends(require_any_permission("work_order.create_draft", "work_order.submit")),
 ) -> WorkOrderOut:
     """Create a draft work order.
 
     Args:
         body: The creation request; mode must be "draft".
+        request: The current request, used to enrich the audit journal entry.
         user: The authenticated caller, injected by require_any_permission.
 
     Returns:
@@ -38,6 +40,7 @@ async def post_work_order(
         ApiError: 422 for mode != "draft" or an unknown work_type/priority/
             target_entity_type; 403 if facility_id is outside the caller's scope.
     """
+    request.state.audit["details"] = {"facility_id": body.facility_id}
     if body.mode != "draft":
         raise ApiError(
             422, "DOMAIN_VALIDATION_ERROR",
@@ -56,6 +59,8 @@ async def post_work_order(
             raise ApiError(403, "FACILITY_ACCESS_DENIED", "Недостаточно прав для создания заявки по этому объекту")
 
         work_order = await create_work_order(session, body, user.id)
+        request.state.audit["target_type"] = "work_order"
+        request.state.audit["target_id"] = work_order.id
         return to_work_order_out(work_order)
 
 

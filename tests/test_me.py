@@ -15,6 +15,7 @@ from src.models.auth import (
 )
 from src.services.auth_service import create_session
 from src.services.demo_seed import seed_demo_users
+from src.services.permissions import PERMISSIONS
 
 
 async def _login(username: str, password: str) -> str:
@@ -42,7 +43,7 @@ async def test_manager_sees_all_facilities_and_full_permission_set() -> None:
     body = response.json()
     assert body["role"] == "Руководитель"
     assert body["scope"] == {"type": "all_facilities"}  # facility_ids omitted for all_facilities
-    assert len(body["permissions"]) == 12
+    assert body["permissions"] == sorted(PERMISSIONS)
     assert body["timezone"] == "Europe/Moscow"
     assert body["locale"] == "ru"
 

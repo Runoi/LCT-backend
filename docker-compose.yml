@@ -5,8 +5,7 @@ services:
       POSTGRES_USER: mkl
       POSTGRES_PASSWORD: mkl
       POSTGRES_DB: mkl
-    ports:
-      - "5432:5432"
+    # No host port: the database is reachable only from the compose network.
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,11 +20,25 @@ services:
       DATABASE_URL: postgresql+asyncpg://mkl:mkl@db:5432/mkl
       APP_ENV: docker
       LOG_LEVEL: INFO
-    ports:
-      - "8000:8000"
+    # No host port: all traffic goes through the TLS proxy.
+    expose:
+      - "8000"
     depends_on:
       db:
         condition: service_healthy
 
+  proxy:
+    build: ./proxy
+    environment:
+      HTTPS_PORT: ${HTTPS_PORT:-8443}
+    ports:
+      - "${HTTPS_PORT:-8443}:443"
+      - "${HTTP_PORT:-8080}:80"
+    volumes:
+      - proxy_certs:/etc/nginx/certs
+    depends_on:
+      - app
+
 volumes:
   db_data:
+  proxy_certs:

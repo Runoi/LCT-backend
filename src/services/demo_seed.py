@@ -26,13 +26,37 @@ _DISPATCHER_PERMISSIONS = frozenset(
 _DISPATCHER_FACILITY_IDS = ("fac_5122", "fac_5339")
 
 
+async def _top_up_manager_permissions(session: AsyncSession) -> None:
+    """Grant the manager every catalogue permission it does not hold yet.
+
+    Keeps the invariant "the demo manager holds the whole catalogue" on
+    databases seeded before the catalogue grew, not only on fresh ones.
+
+    Args:
+        session: An active async database session.
+    """
+    granted = set(
+        (
+            await session.execute(
+                select(UserPermission.permission).where(UserPermission.user_id == "usr_manager")
+            )
+        ).scalars().all()
+    )
+    missing = PERMISSIONS - granted
+    for permission in missing:
+        session.add(UserPermission(user_id="usr_manager", permission=permission))
+    if missing:
+        await session.commit()
+
+
 async def seed_demo_users(session: AsyncSession) -> None:
     """Insert the two documented demo users if they do not already exist.
 
     Checks specifically for the "manager"/"dispatcher" usernames rather
     than "any row in users" so this stays idempotent even when other
     tests or code paths have already inserted unrelated user rows into
-    the same database.
+    the same database. When the users already exist, only the manager's
+    missing catalogue permissions are added.
 
     Args:
         session: An active async database session.
@@ -41,6 +65,8 @@ async def seed_demo_users(session: AsyncSession) -> None:
         await session.execute(select(User).where(User.username.in_(["manager", "dispatcher"])))
     ).scalars().all()
     if existing:
+        if any(user.id == "usr_manager" for user in existing):
+            await _top_up_manager_permissions(session)
         return
 
     manager = User(

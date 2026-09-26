@@ -77,9 +77,13 @@ async def test_activate_single_step_scenario_inserts_one_fixture_reading() -> No
         count = await activate_scenario(session, "fire_smoke_only", facility_id, seed=1)
     assert count == 1
 
+    # Scoped to this call's seed (source_event_id ends with "_<seed>"): other tests
+    # activate the same scenario on the same facility in the shared test database.
     async with async_session_factory() as session:
         rows = (
-            await session.execute(select(SensorReading).where(SensorReading.source_event_id.like(f"fixture_fire_smoke_only_{facility_id}_%")))
+            await session.execute(
+                select(SensorReading).where(SensorReading.source_event_id.like(f"fixture_fire_smoke_only_{facility_id}_%_1"))
+            )
         ).scalars().all()
     assert len(rows) == 1
     assert rows[0].origin == "fixture"

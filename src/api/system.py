@@ -1,10 +1,15 @@
-"""GET/POST /api/v1/system/* -- source-health status and the fixture-scenario/degradation demo controls (ticket 06)."""
+"""GET/POST /api/v1/system/* -- source-health status and the fixture-scenario/degradation demo controls.
+
+Reads are open to any authenticated user; controls that change emulated
+data or reported source status require the `system.manage` permission,
+and scenario activation is additionally limited to the caller's scope.
+"""
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from src.db import async_session_factory
-from src.deps.auth import get_current_user
+from src.deps.auth import get_current_user, require_permission
 from src.errors import ApiError
 from src.models.auth import User
 from src.schemas.system import (
@@ -25,8 +30,11 @@ from src.services.source_health import (
     get_source_health,
     set_source_health_override,
 )
+from src.services.scope import resolve_scope
 
 router = APIRouter(prefix="/api/v1/system", tags=["system"])
+
+_MANAGE = require_permission("system.manage")
 
 
 @router.get("/source-health", response_model=SourceHealthEnvelope)
@@ -47,7 +55,7 @@ async def get_source_health_endpoint(_: User = Depends(get_current_user)) -> Sou
 
 
 @router.post("/source-health/{source}/degrade", status_code=204)
-async def degrade_source(source: str, body: DegradeRequest, _: User = Depends(get_current_user)) -> None:
+async def degrade_source(source: str, body: DegradeRequest, _: User = Depends(_MANAGE)) -> None:
     """Force a source's reported status for a bounded duration (demo/test control)."""
     async with async_session_factory() as session:
         try:
@@ -59,7 +67,7 @@ async def degrade_source(source: str, body: DegradeRequest, _: User = Depends(ge
 
 
 @router.delete("/source-health/{source}/degrade", status_code=204)
-async def clear_source_degradation(source: str, _: User = Depends(get_current_user)) -> None:
+async def clear_source_degradation(source: str, _: User = Depends(_MANAGE)) -> None:
     """Clear an active override, reverting to the computed status."""
     async with async_session_factory() as session:
         try:
@@ -81,10 +89,19 @@ async def list_scenarios(_: User = Depends(get_current_user)) -> ScenarioListEnv
 
 @router.post("/scenarios/{scenario_id}/activate", response_model=ActivateScenarioResult)
 async def activate_scenario_endpoint(
-    scenario_id: str, body: ActivateScenarioRequest, _: User = Depends(get_current_user)
+    scenario_id: str, body: ActivateScenarioRequest, request: Request, user: User = Depends(_MANAGE)
 ) -> ActivateScenarioResult:
-    """Activate a fixture scenario against a real facility."""
+    """Activate a fixture scenario against a real facility within the caller's scope.
+
+    Raises:
+        ApiError: 403 if the facility is outside the caller's scope (checked
+            before anything is written); 422 if the scenario cannot run there.
+    """
+    request.state.audit["details"] = {"facility_id": body.facility_id}
     async with async_session_factory() as session:
+        scope = await resolve_scope(session, user.id)
+        if scope["type"] != "all_facilities" and body.facility_id not in scope["facility_ids"]:
+            raise ApiError(403, "FACILITY_ACCESS_DENIED", "Недостаточно прав для объекта")
         try:
             count = await activate_scenario(session, scenario_id, body.facility_id, seed=body.seed)
         except ScenarioActivationError as exc:

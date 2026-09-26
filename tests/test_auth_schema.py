@@ -62,5 +62,7 @@ async def test_auth_schema_round_trip() -> None:
 
 
 def test_permissions_catalogue_is_nonempty() -> None:
-    assert len(PERMISSIONS) == 12
+    assert len(PERMISSIONS) == 14
     assert "facility.read.all" in PERMISSIONS
+    assert "system.manage" in PERMISSIONS
+    assert "audit.read" in PERMISSIONS

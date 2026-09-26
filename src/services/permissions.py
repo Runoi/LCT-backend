@@ -20,6 +20,8 @@ PERMISSIONS: frozenset[str] = frozenset(
         "analytics.read.summary",
         "analytics.read.technical",
         "report.export",
+        "system.manage",
+        "audit.read",
     }
 )
 

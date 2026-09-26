@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.audit import router as audit_router
 from src.api.auth import router as auth_router
 from src.api.config import router as config_router
 from src.api.events import router as events_router
@@ -22,6 +23,7 @@ from src.api.sensors import router as sensors_router
 from src.api.system import router as system_router
 from src.db import async_session_factory, get_session
 from src.errors import register_exception_handlers
+from src.services.audit_recorder import AuditMiddleware
 from src.services.demo_seed import seed_demo_users
 from src.services.equipment_registry_provider import generate_equipment_registry
 from src.services.event_etl import ingest_event_log
@@ -61,6 +63,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Moskollektor Backend", version="0.1.0", lifespan=lifespan)
+app.add_middleware(AuditMiddleware)
 register_exception_handlers(app)
 app.include_router(config_router)
 app.include_router(auth_router)
@@ -74,6 +77,7 @@ app.include_router(system_router)
 app.include_router(events_router)
 app.include_router(risks_router)
 app.include_router(work_orders_router)
+app.include_router(audit_router)
 
 
 @app.get("/health")
